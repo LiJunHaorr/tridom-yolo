@@ -5,7 +5,6 @@ from pathlib import Path
 
 from ultralytics import YOLO
 
-
 ROOT = Path(__file__).resolve().parent
 DEFAULT_MODEL = ROOT / "ultralytics" / "cfg" / "models" / "11" / "yolo11DiSP_PFAE_CNN.yaml"
 

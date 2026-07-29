@@ -7,15 +7,12 @@ import types
 from copy import deepcopy
 from pathlib import Path
 
-from ultralytics.change_model.Di_SpAM import DI_SpAM,C3k2_DI_SpAM
 import torch
-import torch.nn as nn
+from torch import nn
 
-
-from ultralytics.change_model.Di_SpAM import DI_SpAM,C3k2_DI_SpAM
-from ultralytics.change_model.PFAE import PFAE,C3k2_PFAE
-from ultralytics.change_model.Gated_CNN_block import C2PSA_GatedCNNBlock,C3k2_GatedCNNBlock
-
+from ultralytics.change_model.Di_SpAM import DI_SpAM
+from ultralytics.change_model.Gated_CNN_block import C2PSA_GatedCNNBlock, C3k2_GatedCNNBlock
+from ultralytics.change_model.PFAE import PFAE, C3k2_PFAE
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.nn.modules import (
     AIFI,
@@ -59,7 +56,6 @@ from ultralytics.nn.modules import (
     HGBlock,
     HGStem,
     ImagePoolingAttn,
-    Index,
     LRPCHead,
     Pose,
     Pose26,
@@ -72,7 +68,6 @@ from ultralytics.nn.modules import (
     SCDown,
     Segment,
     Segment26,
-    TorchVision,
     WorldDetect,
     YOLOEDetect,
     YOLOESegment,
@@ -1363,11 +1358,9 @@ class SafeClass:
 
     def __init__(self, *args, **kwargs):
         """Initialize SafeClass instance, ignoring all arguments."""
-        pass
 
     def __call__(self, *args, **kwargs):
         """Run SafeClass instance, ignoring all arguments."""
-        pass
 
 
 class SafeUnpickler(pickle.Unpickler):
@@ -1696,7 +1689,7 @@ def parse_model(d, ch, verbose=True):
             args = [c1, c2, *args[1:]]
         elif m is CBFuse:
             c2 = ch[f[-1]]
-        elif m in {DI_SpAM,PFAE}:
+        elif m in {DI_SpAM, PFAE}:
             c2 = ch[f]
             args = [ch[f]]
         else:
