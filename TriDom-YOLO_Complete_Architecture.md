@@ -237,4 +237,3 @@ Output: Detections (boxes, scores, classes)
 **关键参数**: 膨胀率 d=[3,5,7,9] | 注意力头数=8 | 分支数=6
 
 ---
-

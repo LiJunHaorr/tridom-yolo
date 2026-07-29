@@ -1,23 +1,31 @@
 from functools import partial
+
 import torch
-import torch.nn as nn
 from timm.models.layers import DropPath
+from torch import nn
 
 
 class GatedCNNBlock(nn.Module):
-    r""" Our implementation of Gated CNN Block: https://arxiv.org/pdf/1612.08083
+    r"""Our implementation of Gated CNN Block: https://arxiv.org/pdf/1612.08083.
+
     Args:
-        conv_ratio: control the number of channels to conduct depthwise convolution.
-            Conduct convolution on partial channels can improve practical efficiency.
-            The idea of partial channels is from ShuffleNet V2 (https://arxiv.org/abs/1807.11164) and
-            also used by InceptionNeXt (https://arxiv.org/abs/2303.16900) and FasterNet (https://arxiv.org/abs/2303.03667)
+        conv_ratio: control the number of channels to conduct depthwise convolution. Conduct convolution on partial
+            channels can improve practical efficiency.
+        The idea of partial channels is from ShuffleNet V2 (https: //arxiv.org/abs/1807.11164) and
+        also used by InceptionNeXt (https: //arxiv.org/abs/2303.16900) and FasterNet (https://arxiv.org/abs/2303.03667).
     """
 
-    def __init__(self, dim, expansion_ratio=8 / 3, kernel_size=7, conv_ratio=1.0,
-                 norm_layer=partial(nn.LayerNorm, eps=1e-6),
-                 act_layer=nn.GELU,
-                 drop_path=0.,
-                 **kwargs):
+    def __init__(
+        self,
+        dim,
+        expansion_ratio=8 / 3,
+        kernel_size=7,
+        conv_ratio=1.0,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        act_layer=nn.GELU,
+        drop_path=0.0,
+        **kwargs,
+    ):
         super().__init__()
         self.norm = norm_layer(dim)
         hidden = int(expansion_ratio * dim)
@@ -25,10 +33,11 @@ class GatedCNNBlock(nn.Module):
         self.act = act_layer()
         conv_channels = int(conv_ratio * dim)
         self.split_indices = (hidden, hidden - conv_channels, conv_channels)
-        self.conv = nn.Conv2d(conv_channels, conv_channels, kernel_size=kernel_size, padding=kernel_size // 2,
-                              groups=conv_channels)
+        self.conv = nn.Conv2d(
+            conv_channels, conv_channels, kernel_size=kernel_size, padding=kernel_size // 2, groups=conv_channels
+        )
         self.fc2 = nn.Linear(hidden, dim)
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
 
     def forward(self, x):
         x = x.permute(0, 2, 3, 1)
@@ -41,7 +50,6 @@ class GatedCNNBlock(nn.Module):
         x = self.fc2(self.act(g) * torch.cat((i, c), dim=-1))
         x = self.drop_path(x)
         return (x + shortcut).permute(0, 3, 1, 2)
-
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
@@ -73,6 +81,7 @@ class Conv(nn.Module):
         """Perform transposed convolution of 2D data."""
         return self.act(self.conv(x))
 
+
 class Bottleneck(nn.Module):
     """Standard bottleneck."""
 
@@ -87,6 +96,7 @@ class Bottleneck(nn.Module):
     def forward(self, x):
         """Applies the YOLO FPN to input data."""
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
 
 class C2f(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
@@ -112,6 +122,7 @@ class C2f(nn.Module):
         y.extend(m(y[-1]) for m in self.m)
         return self.cv2(torch.cat(y, 1))
 
+
 class C3(nn.Module):
     """CSP Bottleneck with 3 convolutions."""
 
@@ -128,6 +139,7 @@ class C3(nn.Module):
         """Forward pass through the CSP bottleneck with 2 convolutions."""
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
 
+
 class Bottleneck_GatedCNNBlock(nn.Module):
     """Standard bottleneck."""
 
@@ -143,6 +155,7 @@ class Bottleneck_GatedCNNBlock(nn.Module):
         """Applies the YOLO FPN to input data."""
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
+
 class C3k(C3):
     """C3k is a CSP bottleneck module with customizable kernel sizes for feature extraction in neural networks."""
 
@@ -152,6 +165,7 @@ class C3k(C3):
         c_ = int(c2 * e)  # hidden channels
         # self.m = nn.Sequential(*(RepBottleneck(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
         self.m = nn.Sequential(*(Bottleneck(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
+
 
 class C3k_GatedCNNBlock(C3):
     """C3k is a CSP bottleneck module with customizable kernel sizes for feature extraction in neural networks."""
@@ -163,6 +177,7 @@ class C3k_GatedCNNBlock(C3):
         # self.m = nn.Sequential(*(RepBottleneck(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
         self.m = nn.Sequential(*(Bottleneck_GatedCNNBlock(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
 
+
 # 在c3k=True时，使用Bottleneck_CGLU特征融合，为false的时候我们使用普通的Bottleneck提取特征
 class C3k2_GatedCNNBlock(C2f):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
@@ -171,14 +186,13 @@ class C3k2_GatedCNNBlock(C2f):
         """Initializes the C3k2 module, a faster CSP Bottleneck with 2 convolutions and optional C3k blocks."""
         super().__init__(c1, c2, n, shortcut, g, e)
         self.m = nn.ModuleList(
-            C3k_GatedCNNBlock(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in range(n)
+            C3k_GatedCNNBlock(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g)
+            for _ in range(n)
         )
 
 
-
 class PSABloc_GatedCNNBlock(nn.Module):
-    """
-    PSABlock class implementing a Position-Sensitive Attention block for neural networks.
+    """PSABlock class implementing a Position-Sensitive Attention block for neural networks.
 
     This class encapsulates the functionality for applying multi-head attention and feed-forward neural network layers
     with optional shortcut connections.
@@ -214,8 +228,7 @@ class PSABloc_GatedCNNBlock(nn.Module):
 
 
 class C2PSA_GatedCNNBlock(nn.Module):
-    """
-    C2PSA module with attention mechanism for enhanced feature extraction and processing.
+    """C2PSA module with attention mechanism for enhanced feature extraction and processing.
 
     This module implements a convolutional block with attention mechanisms to enhance feature extraction and processing
     capabilities. It includes a series of PSABlock modules for self-attention and feed-forward operations.
@@ -229,13 +242,13 @@ class C2PSA_GatedCNNBlock(nn.Module):
     Methods:
         forward: Performs a forward pass through the C2PSA module, applying attention and feed-forward operations.
 
-    Notes:
-        This module essentially is the same as PSA module, but refactored to allow stacking more PSABlock modules.
-
     Examples:
         >>> c2psa = C2PSA(c1=256, c2=256, n=3, e=0.5)
         >>> input_tensor = torch.randn(1, 256, 64, 64)
         >>> output_tensor = c2psa(input_tensor)
+
+    Notes:
+        This module essentially is the same as PSA module, but refactored to allow stacking more PSABlock modules.
     """
 
     def __init__(self, c1, c2, n=1, e=0.5):
@@ -246,7 +259,9 @@ class C2PSA_GatedCNNBlock(nn.Module):
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
         self.cv2 = Conv(2 * self.c, c1, 1)
 
-        self.m = nn.Sequential(*(PSABloc_GatedCNNBlock(self.c, attn_ratio=0.5, num_heads=self.c // 64) for _ in range(n)))
+        self.m = nn.Sequential(
+            *(PSABloc_GatedCNNBlock(self.c, attn_ratio=0.5, num_heads=self.c // 64) for _ in range(n))
+        )
 
     def forward(self, x):
         """Processes the input tensor 'x' through a series of PSA blocks and returns the transformed tensor."""
@@ -254,6 +269,7 @@ class C2PSA_GatedCNNBlock(nn.Module):
         a, b = self.cv1(x).split((self.c, self.c), dim=1)
         b = self.m(b)
         return self.cv2(torch.cat((a, b), 1))
+
 
 def main():
     # 设置随机种子以便结果可复现
@@ -273,11 +289,7 @@ def main():
 
     # 创建模型实例
     model = GatedCNNBlock(
-        dim=channels,
-        expansion_ratio=expansion_ratio,
-        kernel_size=kernel_size,
-        conv_ratio=conv_ratio,
-        drop_path=0.1
+        dim=channels, expansion_ratio=expansion_ratio, kernel_size=kernel_size, conv_ratio=conv_ratio, drop_path=0.1
     )
 
     # 前向传播
@@ -293,6 +305,7 @@ def main():
 
     # 计算前向传播时间
     import time
+
     start_time = time.time()
     iterations = 100
     for _ in range(iterations):
