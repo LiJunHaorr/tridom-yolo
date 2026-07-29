@@ -43,33 +43,33 @@ Image
 
 项目论文记录的三模块融合实验结果如下：
 
-| 指标 | TriDom-YOLO | 相对 YOLO11n 基线 |
-| --- | ---: | ---: |
-| mAP50 | 79.5% | +7.2 个百分点 |
-| mAP50-95 | 58.3% | +6.8 个百分点 |
-| 小目标 AP | 72.3% | +13.7 个百分点 |
-| 推理速度 | 82 FPS | -13 FPS |
-| 参数量 | 4.5 M | +1.9 M |
+| 指标      | TriDom-YOLO | 相对 YOLO11n 基线 |
+| --------- | ----------: | ----------------: |
+| mAP50     |       79.5% |     +7.2 个百分点 |
+| mAP50-95  |       58.3% |     +6.8 个百分点 |
+| 小目标 AP |       72.3% |    +13.7 个百分点 |
+| 推理速度  |      82 FPS |           -13 FPS |
+| 参数量    |       4.5 M |            +1.9 M |
 
 仓库同时保留了训练曲线、归一化混淆矩阵、验证集预测示例与 CSV 日志，便于复盘实验过程。
 
-| 训练曲线 | 归一化混淆矩阵 |
-| --- | --- |
+| 训练曲线                                                      | 归一化混淆矩阵                                                  |
+| ------------------------------------------------------------- | --------------------------------------------------------------- |
 | ![Training curves](docs/assets/portfolio/training-curves.png) | ![Confusion matrix](docs/assets/portfolio/confusion-matrix.png) |
 
 ![Validation predictions](docs/assets/portfolio/validation-predictions.jpg)
 
 ## 代码入口
 
-| 路径 | 说明 |
-| --- | --- |
-| `ultralytics/change_model/PFAE.py` | 频率注意力与 PFAE 模块 |
-| `ultralytics/change_model/Di_SpAM.py` | 膨胀空间注意力模块 |
-| `ultralytics/change_model/Gated_CNN_block.py` | 门控 CNN 与 PSA 融合模块 |
+| 路径                                                 | 说明                      |
+| ---------------------------------------------------- | ------------------------- |
+| `ultralytics/change_model/PFAE.py`                   | 频率注意力与 PFAE 模块    |
+| `ultralytics/change_model/Di_SpAM.py`                | 膨胀空间注意力模块        |
+| `ultralytics/change_model/Gated_CNN_block.py`        | 门控 CNN 与 PSA 融合模块  |
 | `ultralytics/cfg/models/11/yolo11DiSP_PFAE_CNN.yaml` | 完整 TriDom-YOLO 网络配置 |
-| `ultralytics/nn/tasks.py` | 自定义模块注册与模型解析 |
-| `train_yolov11.py` | 可移植训练入口 |
-| `docs/assets/portfolio/` | 精选实验曲线与预测结果 |
+| `ultralytics/nn/tasks.py`                            | 自定义模块注册与模型解析  |
+| `train_yolov11.py`                                   | 可移植训练入口            |
+| `docs/assets/portfolio/`                             | 精选实验曲线与预测结果    |
 
 ## 快速开始
 
