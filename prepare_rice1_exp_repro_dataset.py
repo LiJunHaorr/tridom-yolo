@@ -5,7 +5,6 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent
 WORKSPACE_ROOT = ROOT.parent
 SOURCE_DATASET_ROOT = WORKSPACE_ROOT / "8" / "rice_dataset" / "datasets"
