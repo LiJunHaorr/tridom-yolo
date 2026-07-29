@@ -3,10 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from ultralytics import YOLO
-
 from prepare_rice1_exp_repro_dataset import TARGET_DATASET_YAML, prepare_dataset, print_stats
-
+from ultralytics import YOLO
 
 ROOT = Path(__file__).resolve().parent
 MODEL_CFG = ROOT / "ultralytics" / "cfg" / "models" / "11" / "yolo11n.yaml"
@@ -76,7 +74,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Reproduce the 8/exp-rice-200epoch experiment as closely as possible.")
     parser.add_argument("--device", default="0", help="Training device passed to Ultralytics, for example 0 or cpu.")
     parser.add_argument("--workers", type=int, default=4, help="Number of dataloader workers.")
-    parser.add_argument("--epochs", type=int, default=200, help="Number of training epochs. Defaults to the original run.")
+    parser.add_argument(
+        "--epochs", type=int, default=200, help="Number of training epochs. Defaults to the original run."
+    )
     parser.add_argument("--batch", type=int, default=32, help="Batch size. Defaults to the original run.")
     parser.add_argument("--name", default="exp-rice-200epoch-repro", help="Run name under YOLOv11/runs/train.")
     parser.add_argument("--prepare-only", action="store_true", help="Only prepare the normalized detect dataset.")
