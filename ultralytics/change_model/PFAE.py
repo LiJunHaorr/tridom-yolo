@@ -290,17 +290,16 @@
 #     main()
 
 
-
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Softmax
-from einops import rearrange, repeat
+from einops import rearrange
+from torch import nn
 
 # https://arxiv.org/pdf/2503.11030
 
+
 def custom_complex_normalization(input_tensor, dim=-1):
-    """自定义复数归一化函数"""
+    """自定义复数归一化函数."""
     real_part = input_tensor.real
     imag_part = input_tensor.imag
     norm_real = F.softmax(real_part, dim=dim)
@@ -309,67 +308,51 @@ def custom_complex_normalization(input_tensor, dim=-1):
 
 
 class PFAE(nn.Module):
-    """PFAE (Parallel Frequency Attention Enhancement) 模块"""
+    """PFAE (Parallel Frequency Attention Enhancement) 模块."""
 
     def __init__(self, dim):
         super().__init__()
 
-        in_dim=dim//2
+        in_dim = dim // 2
         # 下采样层
-        self.down_conv = nn.Sequential(
-            nn.Conv2d(dim, in_dim, 3, padding=1),
-            nn.BatchNorm2d(in_dim),
-            nn.ReLU(True)
-        )
+        self.down_conv = nn.Sequential(nn.Conv2d(dim, in_dim, 3, padding=1), nn.BatchNorm2d(in_dim), nn.ReLU(True))
         down_dim = in_dim // 2
 
         # 五个并行卷积分支
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(in_dim, down_dim, kernel_size=1),
-            nn.BatchNorm2d(down_dim),
-            nn.ReLU(True)
-        )
+        self.conv1 = nn.Sequential(nn.Conv2d(in_dim, down_dim, kernel_size=1), nn.BatchNorm2d(down_dim), nn.ReLU(True))
 
         # 膨胀卷积分支（dilation=3）
         self.conv2 = nn.Sequential(
-            nn.Conv2d(in_dim, down_dim, kernel_size=3, dilation=3, padding=3),
-            nn.BatchNorm2d(down_dim),
-            nn.ReLU(True)
+            nn.Conv2d(in_dim, down_dim, kernel_size=3, dilation=3, padding=3), nn.BatchNorm2d(down_dim), nn.ReLU(True)
         )
 
         # 膨胀卷积分支（dilation=5）
         self.conv3 = nn.Sequential(
             nn.Conv2d(down_dim, down_dim, kernel_size=3, dilation=5, padding=5),  # 修改输入通道为down_dim
             nn.BatchNorm2d(down_dim),
-            nn.ReLU(True)
+            nn.ReLU(True),
         )
 
         # 膨胀卷积分支（dilation=7）
         self.conv4 = nn.Sequential(
             nn.Conv2d(down_dim, down_dim, kernel_size=3, dilation=7, padding=7),  # 修改输入通道为down_dim
             nn.BatchNorm2d(down_dim),
-            nn.ReLU(True)
+            nn.ReLU(True),
         )
 
         # 膨胀卷积分支（dilation=9）
         self.conv5 = nn.Sequential(
             nn.Conv2d(down_dim, down_dim, kernel_size=3, dilation=9, padding=9),  # 修改输入通道为down_dim
             nn.BatchNorm2d(down_dim),
-            nn.ReLU(True)
+            nn.ReLU(True),
         )
 
         # 全局平均池化分支
-        self.conv6 = nn.Sequential(
-            nn.Conv2d(in_dim, down_dim, kernel_size=1),
-            nn.BatchNorm2d(down_dim),
-            nn.ReLU(True)
-        )
+        self.conv6 = nn.Sequential(nn.Conv2d(in_dim, down_dim, kernel_size=1), nn.BatchNorm2d(down_dim), nn.ReLU(True))
 
         # 特征融合层
         self.fuse = nn.Sequential(
-            nn.Conv2d(6 * down_dim, down_dim, kernel_size=1),
-            nn.BatchNorm2d(down_dim),
-            nn.ReLU(True)
+            nn.Conv2d(6 * down_dim, down_dim, kernel_size=1), nn.BatchNorm2d(down_dim), nn.ReLU(True)
         )
 
         # 输出层
@@ -377,7 +360,7 @@ class PFAE(nn.Module):
             nn.Conv2d(down_dim, down_dim // 2, kernel_size=3, padding=1),
             nn.BatchNorm2d(down_dim // 2),
             nn.ReLU(True),
-            nn.Conv2d(down_dim // 2, dim, kernel_size=1)
+            nn.Conv2d(down_dim // 2, dim, kernel_size=1),
         )
 
         # 注意力参数
@@ -390,27 +373,26 @@ class PFAE(nn.Module):
             nn.BatchNorm2d(down_dim // 8),
             nn.ReLU(True),
             nn.Conv2d(down_dim // 8, down_dim, 1, bias=True),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
         self.num_heads = 8
 
-
     def frequency_attention(self, x):
-        """频率注意力计算"""
-        b, c, h, w = x.shape
+        """频率注意力计算."""
+        _b, _c, h, w = x.shape
         # 保存原始数据类型
         original_dtype = x.dtype
-        
+
         q_f = torch.fft.fft2(x.float())
         k_f = torch.fft.fft2(x.float())
         v_f = torch.fft.fft2(x.float())
         tepqkv = torch.fft.fft2(x.float())
 
         # 多头处理
-        q_f = rearrange(q_f, 'b (head c) h w -> b head c (h w)', head=self.num_heads)
-        k_f = rearrange(k_f, 'b (head c) h w -> b head c (h w)', head=self.num_heads)
-        v_f = rearrange(v_f, 'b (head c) h w -> b head c (h w)', head=self.num_heads)
+        q_f = rearrange(q_f, "b (head c) h w -> b head c (h w)", head=self.num_heads)
+        k_f = rearrange(k_f, "b (head c) h w -> b head c (h w)", head=self.num_heads)
+        v_f = rearrange(v_f, "b (head c) h w -> b head c (h w)", head=self.num_heads)
 
         # 归一化
         q_f = F.normalize(q_f, dim=-1)
@@ -422,7 +404,7 @@ class PFAE(nn.Module):
 
         # 反变换
         out_f = torch.abs(torch.fft.ifft2(attn_f @ v_f))
-        out_f = rearrange(out_f, 'b head c (h w) -> b (head c) h w', head=self.num_heads, h=h, w=w)
+        out_f = rearrange(out_f, "b head c (h w) -> b (head c) h w", head=self.num_heads, h=h, w=w)
 
         # 局部注意力 - 确保类型匹配
         tepqkv_real = tepqkv.real.to(original_dtype)  # 转换为原始数据类型
@@ -436,7 +418,7 @@ class PFAE(nn.Module):
         return out + x  # 残差连接
 
     def forward(self, x):
-        """前向传播"""
+        """前向传播."""
         x = self.down_conv(x)  # [B, in_dim, H, W]
         conv1 = self.conv1(x)  # [B, down_dim, H, W]
 
@@ -447,16 +429,11 @@ class PFAE(nn.Module):
         F_5 = self.frequency_attention(self.conv5(F_4))
 
         # 全局分支
-        conv5 = F.interpolate(
-            self.conv6(F.adaptive_avg_pool2d(x, 1)),
-            size=x.size()[2:],
-            mode='bilinear'
-        )
+        conv5 = F.interpolate(self.conv6(F.adaptive_avg_pool2d(x, 1)), size=x.size()[2:], mode="bilinear")
 
         # 特征融合
         F_out = self.out(self.fuse(torch.cat((conv1, F_2, F_3, F_4, F_5, conv5), 1)))
         return F_out
-
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
@@ -490,6 +467,7 @@ class Conv(nn.Module):
         x = x.to(self.conv.weight.device)  # 确保输入张量在卷积层所在设备
         return self.act(self.conv(x))
 
+
 class Bottleneck(nn.Module):
     """Standard bottleneck."""
 
@@ -504,6 +482,7 @@ class Bottleneck(nn.Module):
     def forward(self, x):
         """Applies the YOLO FPN to input data."""
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
 
 class C2f(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
@@ -529,6 +508,7 @@ class C2f(nn.Module):
         y.extend(m(y[-1]) for m in self.m)
         return self.cv2(torch.cat(y, 1))
 
+
 class C3(nn.Module):
     """CSP Bottleneck with 3 convolutions."""
 
@@ -545,6 +525,7 @@ class C3(nn.Module):
         """Forward pass through the CSP bottleneck with 2 convolutions."""
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
 
+
 class Bottleneck_PFAE(nn.Module):
     """Standard bottleneck."""
 
@@ -560,6 +541,7 @@ class Bottleneck_PFAE(nn.Module):
         """Applies the YOLO FPN to input data."""
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
+
 class C3k(C3):
     """C3k is a CSP bottleneck module with customizable kernel sizes for feature extraction in neural networks."""
 
@@ -569,6 +551,7 @@ class C3k(C3):
         c_ = int(c2 * e)  # hidden channels
         # self.m = nn.Sequential(*(RepBottleneck(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
         self.m = nn.Sequential(*(Bottleneck_PFAE(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
+
 
 # 在c3k=True时，使用Bottleneck_HSMSSD特征融合，为false的时候我们使用普通的Bottleneck提取特征
 class C3k2_PFAE(C2f):
@@ -581,8 +564,9 @@ class C3k2_PFAE(C2f):
             C3k(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in range(n)
         )
 
+
 def main():
-    """测试函数"""
+    """测试函数."""
     # 测试参数
     batch_size = 2
     channels = 64
@@ -597,7 +581,6 @@ def main():
     # 前向传播
     output = pfae(x)
     print(f"\n输出形状: {output.shape}")
-
 
 
 if __name__ == "__main__":
