@@ -1,0 +1,38 @@
+name: Portfolio Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  source-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Compile custom modules
+        run: |
+          python -m py_compile \
+            ultralytics/change_model/PFAE.py \
+            ultralytics/change_model/Di_SpAM.py \
+            ultralytics/change_model/Gated_CNN_block.py \
+            train_yolov11.py
+
+      - name: Verify portfolio assets
+        run: |
+          test -f ultralytics/cfg/models/11/yolo11DiSP_PFAE_CNN.yaml
+          test -f TriDom-YOLO_Complete_Architecture.md
+          test -f docs/assets/portfolio/training-curves.png
+          test -f docs/assets/portfolio/confusion-matrix.png
+          test -f docs/assets/portfolio/validation-predictions.jpg
